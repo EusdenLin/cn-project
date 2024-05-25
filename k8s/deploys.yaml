@@ -1,0 +1,139 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-deploy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:5.7
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: rootpassword 
+            - name: MYSQL_DATABASE
+              value: labapp
+            - name: MYSQL_USER
+              value: myuser
+            - name: MYSQL_PASSWORD
+              value: mypassword
+            - name: TZ
+              value: Asia/Taipei
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: mysql-persistent-storage
+              mountPath: /var/lib/mysql
+            - name: init-sql
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: mysql-persistent-storage
+          persistentVolumeClaim:
+            claimName: db-pvc
+        - name: init-sql
+          configMap:
+            name: init-sql-config
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: init-sql-config
+data:
+  init.sql: |
+    CREATE DATABASE IF NOT EXISTS labapp;
+    USE labapp;
+    DROP TABLE IF EXISTS orders;
+    DROP TABLE IF EXISTS users;
+
+    SET explicit_defaults_for_timestamp=ON;
+
+    CREATE TABLE orders (
+      serialNo INT NOT NULL AUTO_INCREMENT,
+      serialString VARCHAR(50) NOT NULL,
+      priority ENUM('regular', 'urgent', 'emergency') NOT NULL,
+      factory ENUM('Fab A', 'Fab B', 'Fab C') NOT NULL,
+      lab ENUM('chemical', 'surface', 'composition') NOT NULL,
+      status ENUM('Issued', 'Approved', 'Completed', 'Rejected') NOT NULL,
+      createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      createdBy VARCHAR(50) NOT NULL,
+      filePath VARCHAR(255) DEFAULT NULL,
+      approvedAt TIMESTAMP DEFAULT NULL,
+      approvedBy VARCHAR(50) DEFAULT NULL,
+      completedAt TIMESTAMP DEFAULT NULL,
+      completedBy VARCHAR(50) DEFAULT NULL,
+      description VARCHAR(1000) DEFAULT NULL,
+      PRIMARY KEY (serialNo)
+    );
+
+    CREATE TABLE users (
+      userID VARCHAR(50) NOT NULL,
+      userPassword VARCHAR(255) NOT NULL,
+      dep ENUM('Fab A', 'Fab B', 'Fab C', 'chemical', 'surface', 'composition') NOT NULL,
+      email VARCHAR(255) NOT NULL,
+      createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (userID)
+    );        
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: db-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-deploy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/eusdenlin/cn-backend:latest
+          ports:
+            - containerPort: 5001
+          resources:
+            requests:
+              cpu: 300m
+              memory: 300Mi
+            limits:
+              cpu: 2000m
+              memory: 2000Mi
+          env:
+            - name: MYSQL_URL
+              value: mysql:3306
+        
+        - name: frontend
+          image: ghcr.io/eusdenlin/cn-frontend:latest
+          ports:
+            - containerPort: 5173
+          resources:
+            requests:
+              cpu: 1000m
+              memory: 1000Mi
+            limits:
+              cpu: 2000m
+              memory: 2000Mi
+        

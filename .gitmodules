@@ -1,0 +1,6 @@
+[submodule "2024CN-project"]
+	path = 2024CN-project
+	url = https://github.com/pei9223/2024CN-project
+[submodule "lrs-frontend"]
+	path = lrs-frontend
+	url = https://github.com/hy-qqqqq/lrs-frontend
