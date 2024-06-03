@@ -109,6 +109,33 @@ spec:
       labels:
         app: app
     spec:
+      containers:     
+        - name: frontend
+          image: ghcr.io/eusdenlin/cn-frontend:latest
+          ports:
+            - containerPort: 5173
+          resources:
+            requests:
+              cpu: 1000m
+              memory: 1000Mi
+            limits:
+              cpu: 2000m
+              memory: 2000Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deploy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
       containers:
         - name: backend
           image: ghcr.io/eusdenlin/cn-backend:latest
@@ -125,15 +152,4 @@ spec:
             - name: MYSQL_URL
               value: mysql:3306
         
-        - name: frontend
-          image: ghcr.io/eusdenlin/cn-frontend:latest
-          ports:
-            - containerPort: 5173
-          resources:
-            requests:
-              cpu: 1000m
-              memory: 1000Mi
-            limits:
-              cpu: 2000m
-              memory: 2000Mi
         
